@@ -8,14 +8,26 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Write SSH key to file (debug)
+      - name: Write key
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
+          printf '%s\n' "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keygen -lf ~/.ssh/deploy_key || true
 
-      - name: Deploy to EC2 (SSH)
+      - name: Show host (masked)
+        run: |
+          echo "Host length: ${#DEPLOY_HOST}"
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+
+      - name: Test DNS + reachability
+        run: |
+          echo "Checking host..."
+          getent hosts "${{ secrets.DEPLOY_HOST }}" || true
+          ping -c 1 -W 2 "${{ secrets.DEPLOY_HOST }}" || true
+          timeout 5 bash -lc "cat < /dev/null > /dev/tcp/${{ secrets.DEPLOY_HOST }}/22" && echo "PORT 22 OK" || (echo "PORT 22 BLOCKED" && exit 1)
+
+      - name: Deploy
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} "
             set -e
