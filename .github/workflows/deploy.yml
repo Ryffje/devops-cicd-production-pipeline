@@ -7,18 +7,21 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     steps:
+      - name: Write SSH key to file (debug)
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keygen -lf ~/.ssh/deploy_key || true
+
       - name: Deploy to EC2 (SSH)
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          script: |
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} "
             set -e
-            cd /home/deploy/apps/devops-cicd-production-pipeline
+            cd /home/${{ secrets.DEPLOY_USER }}/apps/devops-cicd-production-pipeline
             git pull origin main
             docker compose up -d --build
             docker compose ps
+          "
 
