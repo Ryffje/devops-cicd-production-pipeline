@@ -25,9 +25,11 @@ jobs:
           getent hosts "${DEPLOY_HOST}" || true
           timeout 5 bash -lc "cat < /dev/null > /dev/tcp/${DEPLOY_HOST}/22" && echo "PORT 22 OK" || (echo "PORT 22 BLOCKED" && exit 1)
 
-      - name: Deploy
-        run: |
-          echo "Deploying to ${DEPLOY_USER}@${DEPLOY_HOST}"
-          ssh -vvv -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            "set -e; cd /home/${DEPLOY_USER}/apps/devops-cicd-production-pipeline; git pull origin main; docker compose up -d --build; docker compose ps"
+          - name: Deploy
+          run: |
+            HOST="${DEPLOY_HOST}"
+            USER="$(echo -n "${DEPLOY_USER}" | tr -d '\r\n' | xargs)"
+            echo "Deploying to ${USER}@${HOST}"
+            ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no "${USER}@${HOST}" \
+              "set -e; cd /home/${USER}/apps/devops-cicd-production-pipeline; git pull origin main; docker compose up -d --build; docker compose ps"
 
