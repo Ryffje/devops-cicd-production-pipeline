@@ -14,22 +14,27 @@ jobs:
 
     steps:
       - name: Write key
+        shell: bash
         run: |
           mkdir -p ~/.ssh
           printf '%s\n' "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
 
       - name: Test DNS + reachability
+        shell: bash
         run: |
+          set -e
           echo "HOST=${DEPLOY_HOST}"
           getent hosts "${DEPLOY_HOST}" || true
           timeout 5 bash -lc "cat < /dev/null > /dev/tcp/${DEPLOY_HOST}/22" && echo "PORT 22 OK" || (echo "PORT 22 BLOCKED" && exit 1)
 
-          - name: Deploy
-          run: |
-            HOST="${DEPLOY_HOST}"
-            USER="$(echo -n "${DEPLOY_USER}" | tr -d '\r\n' | xargs)"
-            echo "Deploying to ${USER}@${HOST}"
-            ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no "${USER}@${HOST}" \
-              "set -e; cd /home/${USER}/apps/devops-cicd-production-pipeline; git pull origin main; docker compose up -d --build; docker compose ps"
+      - name: Deploy
+        shell: bash
+        run: |
+          set -e
+          HOST="${DEPLOY_HOST}"
+          USER="$(echo -n "${DEPLOY_USER}" | tr -d '\r\n' | xargs)"
+          echo "Deploying to ${USER}@${HOST}"
 
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no "${USER}@${HOST}" \
+            "set -e; cd /home/${USER}/apps/devops-cicd-production-pipeline; git pull origin main; docker compose up -d --build; docker compose ps"
